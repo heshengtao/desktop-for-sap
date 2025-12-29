@@ -7,6 +7,6 @@ Super Agent Party的桌面客户端部分，可以将你的docker版本的、NAS
 
 ---
 
-👉 [Windows-exe](https://github.com/heshengtao/super-agent-party/releases/download/v0.3.5/Super-Agent-Party-Setup-0.3.5.exe)
+👉 [Windows-exe](https://github.com/heshengtao/desktop-for-sap/releases/download/v0.1.0/super-agent-party-lite-Setup-0.1.0.exe)
 
-👉 [MacOS-dmg](https://github.com/heshengtao/super-agent-party/releases/download/v0.3.5/Super-Agent-Party-0.3.5-Mac.dmg)
+👉 [MacOS-dmg](https://github.com/heshengtao/desktop-for-sap/releases/download/v0.1.0/super-agent-party-lite-0.1.0-Mac.dmg)
