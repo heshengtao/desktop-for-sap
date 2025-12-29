@@ -29,12 +29,12 @@
   "license": "AGPL-3.0",
   "build": {
     "appId": "com.superagent.party",
-    "productName": "Super-Agent-Party",
+    "productName": "super-agent-party-lite",
     "copyright": "Copyright © 2025 Heshengtao",
     "publish": {
       "provider": "github",
       "owner": "heshengtao",
-      "repo": "super-agent-party",
+      "repo": "desktop-for-sap",
       "releaseType": "draft"
     },
     "compression": "maximum",
@@ -76,7 +76,7 @@
       ],
       "artifactName": "${productName}-${version}-Mac.${ext}",
       "category": "public.app-category.utilities",
-      "identity": "super-agent-party",
+      "identity": "super-agent-party-lite",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "entitlements.mac.plist",

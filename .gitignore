@@ -140,3 +140,4 @@ vite.config.ts.timestamp-*
 
 build.md
 release
+.DS_store
