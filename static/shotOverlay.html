@@ -1,0 +1,96 @@
+<!doctype html>
+<html style="margin:0;padding:0;width:100%;height:100%;overflow:hidden;">
+<head>
+  <meta charset="utf-8"/>
+  <title>截图选区</title>
+  <style>
+    html,body{margin:0;width:100vw;height:100vh;overflow:hidden;cursor:crosshair}
+    /* 唯一一层 canvas，其余什么都不画 */
+    #canvas{position:fixed;left:0;top:0;width:100%;height:100%;z-index:2;pointer-events:none}
+    /* 橙色边框 */
+    #box{position:absolute;border:2px solid #ff7b00;z-index:3;pointer-events:none;display:none}
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="box"></div>
+
+  <script src="shotPreload.js"></script>
+  <script>
+    const canvas = document.getElementById('canvas')
+    const ctx = canvas.getContext('2d')
+    const box = document.getElementById('box')
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+      drawMask()
+    }
+    window.addEventListener('resize', resizeCanvas)
+    resizeCanvas()
+
+    function drawMask() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      if (box.style.display === 'none') return   // 还没开始选
+
+      const x = parseInt(box.style.left)
+      const y = parseInt(box.style.top)
+      const w = parseInt(box.style.width)
+      const h = parseInt(box.style.height)
+
+      ctx.fillStyle = 'rgba(0,0,0,.45)'
+
+      /* 反向填充：只画四条边，中间完全留空 */
+      ctx.fillRect(0, 0, canvas.width, y)                    // 上边
+      ctx.fillRect(0, y + h, canvas.width, canvas.height - y - h) // 下边
+      ctx.fillRect(0, y, x, h)                               // 左边
+      ctx.fillRect(x + w, y, canvas.width - x - w, h)        // 右边
+    }
+
+    let startX, startY, down = false
+
+    window.addEventListener('mousedown', e => {
+      down = true
+      startX = e.clientX
+      startY = e.clientY
+      box.style.display = 'block'
+      box.style.left = startX + 'px'
+      box.style.top = startY + 'px'
+      box.style.width = box.style.height = 0
+    })
+
+    window.addEventListener('mousemove', e => {
+      if (!down) return
+      const left = Math.min(e.clientX, startX)
+      const top = Math.min(e.clientY, startY)
+      const width = Math.abs(e.clientX - startX)
+      const height = Math.abs(e.clientY - startY)
+      box.style.left = left + 'px'
+      box.style.top = top + 'px'
+      box.style.width = width + 'px'
+      box.style.height = height + 'px'
+      drawMask()
+    })
+
+    window.addEventListener('mouseup', e => {
+      if (!down) return
+      down = false
+      const rect = {
+        x: parseInt(box.style.left),
+        y: parseInt(box.style.top),
+        width: parseInt(box.style.width),
+        height: parseInt(box.style.height)
+      }
+      if (rect.width < 10 || rect.height < 10) {
+        window.electronAPI.cancelShot()
+        return
+      }
+      window.electronAPI.finishShot(rect)
+    })
+
+    window.addEventListener('keydown', e => {
+      if (e.key === 'Escape') window.electronAPI.cancelShot()
+    })
+  </script>
+</body>
+</html>

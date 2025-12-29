@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Super Agent Party</title>
+  <style>
+    :root {
+      --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --text-color: #111111;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #ffffff;
+      font-family: var(--font-main);
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* --- 动态流体背景 --- */
+    .fluid-background {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      background: #ffffff;
+      filter: blur(80px);
+      opacity: 0.6;
+    }
+
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      animation: float 10s infinite ease-in-out alternate;
+    }
+
+    .blob-1 {
+      top: 10%;
+      left: 20%;
+      width: 500px;
+      height: 500px;
+      background: #a8edea;
+      animation-delay: 0s;
+    }
+
+    .blob-2 {
+      bottom: 10%;
+      right: 20%;
+      width: 400px;
+      height: 400px;
+      background: #fed6e3;
+      animation-delay: -5s;
+    }
+
+    .blob-3 {
+      top: 40%;
+      left: 40%;
+      width: 300px;
+      height: 300px;
+      background: #e0c3fc;
+      animation-delay: -2s;
+    }
+
+    /* --- 内容层 --- */
+    #app {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100vw;
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    #app.fade-out {
+      opacity: 0;
+      transform: scale(1.05);
+      filter: blur(5px);
+    }
+
+    /* --- Logo 与 标题 --- */
+    .center-visual {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 60px;
+    }
+
+    .logo-img {
+      /* 已放大到 200px */
+      width: 200px;
+      height: 200px;
+      object-fit: contain;
+      margin-bottom: 10px; /* 间距也相应调大，避免拥挤 */
+      filter: drop-shadow(0 15px 30px rgba(0,0,0,0.08)); 
+      animation: breathe 5s ease-in-out infinite;
+    }
+
+    .app-name {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--text-color);
+      margin: 0;
+    }
+    
+    .app-desc {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #666;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* --- 数字加载器 --- */
+    .loader-container {
+      position: absolute;
+      bottom: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100px; /* 固定高度，防止内容变化时跳动 */
+      transition: opacity 0.3s ease;
+    }
+
+    .percent-text {
+      font-size: 64px;
+      font-weight: 200;
+      color: var(--text-color);
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      display: flex; /* 确保 % 符号对齐 */
+      align-items: flex-start;
+    }
+    
+    .percent-symbol {
+      font-size: 24px;
+      margin-top: 10px; /* 微调百分号位置 */
+      margin-left: 4px;
+      opacity: 0.4;
+    }
+
+    .loading-label {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #888;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .drag-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 40px;
+      -webkit-app-region: drag;
+      z-index: 100;
+    }
+
+    @keyframes float {
+      0% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(30px, -30px) scale(1.1); }
+      100% { transform: translate(-20px, 20px) scale(0.9); }
+    }
+
+    @keyframes breathe {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
+    #preload-frame { display: none; }
+  </style>
+</head>
+<body>
+  <div class="drag-layer"></div>
+
+  <div class="fluid-background">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <div id="app">
+    <div class="center-visual">
+      <img src="source/logo.png" alt="Logo" class="logo-img">
+      <h1 class="app-name">Super Agent Party</h1>
+      <div class="app-desc">Intelligent Workspace</div>
+    </div>
+
+    <div class="loader-container">
+      <div class="percent-text">
+        <span id="counter">0</span><span class="percent-symbol">%</span>
+      </div>
+      <div class="loading-label" id="status-text">Initializing</div>
+    </div>
+    
+    <iframe id="preload-frame"></iframe>
+  </div>
+
+  <script>
+    const { ipcRenderer } = window.electron || {};
+    const counterEl = document.getElementById('counter');
+    const statusText = document.getElementById('status-text');
+
+    let currentNum = 0;
+    let targetNum = 0;
+    let animationFrameId;
+    
+    // 1. 模拟加载进度的逻辑
+    const simulateLoad = setInterval(() => {
+      // 只要没加载完，就随机跑到 90% 左右停住等待
+      if (targetNum < 90) {
+        targetNum += Math.floor(Math.random() * 5) + 1;
+      }
+    }, 200);
+
+    // 2. 渲染循环：负责让数字平滑滚动
+    const renderLoop = () => {
+      if (currentNum < targetNum) {
+        // 加快跳动速度，看起来更灵敏
+        const step = Math.ceil((targetNum - currentNum) * 0.1) || 1;
+        currentNum += step;
+        counterEl.innerText = currentNum;
+      }
+      animationFrameId = requestAnimationFrame(renderLoop);
+    };
+    renderLoop();
+
+    // 状态文字轮播
+    let textIdx = 0;
+    const texts = ['Initializing', 'Connecting...', 'Syncing Data...'];
+    const textInterval = setInterval(() => {
+      textIdx = (textIdx + 1) % texts.length;
+      statusText.innerText = texts[textIdx];
+    }, 1500);
+
+    // 3. 监听后端准备就绪信号
+    if (ipcRenderer) {
+      ipcRenderer.on('backend-ready', () => {
+        // [关键修复]：清理所有定时器和动画循环
+        clearInterval(simulateLoad);
+        clearInterval(textInterval);
+        cancelAnimationFrame(animationFrameId); // 停止数字滚动的动画帧
+
+        // [关键修复]：强制设定为最终状态
+        counterEl.innerText = "100";
+        statusText.innerText = "Ready";
+        statusText.style.color = "#000";
+
+        // 开始加载主页面
+        const { host, port } = window.electron.server;
+        const mainPageUrl = `http://${host}:${port}`;
+        
+        const preloadFrame = document.getElementById('preload-frame');
+        preloadFrame.src = mainPageUrl;
+        
+        preloadFrame.onload = function() {
+          // 稍微延迟一下，让用户看清 100% 和 Ready
+          setTimeout(() => {
+            document.getElementById('app').classList.add('fade-out');
+            setTimeout(() => {
+              window.location.href = mainPageUrl;
+            }, 600);
+          }, 400);
+        };
+      });
+    }
+  </script>
+</body>
+</html>
