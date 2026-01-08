@@ -1,7 +1,7 @@
 {
   "name": "super-agent-party-lite",
-  "version": "v0.1.0",
-  "description": "超级智能体派对v0.1.0 | 无后端版本，需要连上你的服务器才能使用",
+  "version": "v0.1.1",
+  "description": "超级智能体派对v0.1.1 | 无后端版本，需要连上你的服务器才能使用",
   "main": "main.js",
   "asar": true, 
   "scripts": {
@@ -49,6 +49,7 @@
       "static/js/preload.js",
       "static/skeleton.html",
       "static/js/shotPreload.js",
+      "static/js/webview-preload.js",
       "static/shotOverlay.html",
       "static/source/icon_tray.png"
     ],
