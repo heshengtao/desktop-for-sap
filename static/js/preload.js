@@ -20,10 +20,17 @@ const windowConfig = {
 contextBridge.exposeInMainWorld('electron', {
   isMac: process.platform === 'darwin',
   isWindows: process.platform === 'win32',
+  invoke: (channel, ...args) => {
+    // 处于安全考虑，只放行 connect-to-backend 请求
+    if (channel === 'connect-to-backend') {
+      return ipcRenderer.invoke(channel, ...args);
+    }
+  },
+
   ipcRenderer: {
     on: (channel, func) => {
       // 只允许特定的通道
-      const validChannels = ['backend-ready'];
+      const validChannels = ['backend-ready', 'trigger-search']; 
       if (validChannels.includes(channel)) {
         ipcRenderer.on(channel, (event, ...args) => func(...args));
       }
@@ -36,8 +43,10 @@ contextBridge.exposeInMainWorld('electron', {
   },
   requestStopQQBot: () => ipcRenderer.invoke('request-stop-qqbot'),
   requestStopFeishuBot : () => ipcRenderer.invoke('request-stop-feishubot'),
+  requestStopDingtalkBot : () => ipcRenderer.invoke('request-stop-dingtalk'),
   requestStopDiscordBot : () => ipcRenderer.invoke('request-stop-discordbot'),
   requestStopTelegramBot : () => ipcRenderer.invoke('request-stop-telegrambot'),
+  requestStopSlackBot : () => ipcRenderer.invoke('request-stop-slackbot'), 
 });
 
 // 暴露安全接口
@@ -47,7 +56,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 系统功能
   openExternal: (url) => shell.openExternal(url),
   openPath: (filePath) => shell.openPath(filePath),
-  getAppPath: () => app.getAppPath(),
+  getAppPath: () => ipcRenderer.invoke('get-app-path'),
   getPath: () => remote.app.getPath('downloads'),
   // 窗口控制
   windowAction: (action) => ipcRenderer.invoke('window-action', action),
@@ -117,6 +126,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getPlatform: () => process.platform,
   openExtensionWindow: (url, extension) => ipcRenderer.invoke('open-extension-window', { url, extension }),
   getBackendLogs: () => ipcRenderer.invoke('get-backend-logs'),
+
+  onRemoteInstall: (callback) => ipcRenderer.on('remote-install-any', (_, payload) => callback(payload)),
+  checkPendingInstall: () => ipcRenderer.invoke('check-pending-install'),
+
 });
 
 contextBridge.exposeInMainWorld('vmcAPI', {
@@ -135,7 +148,8 @@ contextBridge.exposeInMainWorld('vmcAPI', {
   sendVMCBlendApply: () => {
     if (!vmcCfg.send.enable) return;
     return ipcRenderer.invoke('send-vmc-blend-apply');
-  }
+  },
+  sendVMCFrame: (data) => ipcRenderer.invoke('send-vmc-frame', data),
 });
 
 contextBridge.exposeInMainWorld('downloadAPI', {
