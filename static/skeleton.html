@@ -151,6 +151,27 @@
     const errorMsg = document.getElementById('errorMsg');
 
     const DEFAULT_SERVER = 'http://127.0.0.1:3456';
+    const CACHE_KEY = 'sap_last_server_url';
+
+    // 读取上次成功连接的 URL，填入输入框
+    function loadCachedUrl() {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached && cached !== DEFAULT_SERVER) {
+          serverInput.value = cached;
+          serverInput.style.borderColor = '#a0c4ff';
+          const hint = document.createElement('div');
+          hint.style.cssText = 'font-size:11px;color:#888;margin-bottom:8px;';
+          hint.innerText = '↑ Last connected server';
+          serverInput.parentNode.insertBefore(hint, serverInput.nextSibling);
+        }
+      } catch(e) {}
+    }
+
+    // 保存成功连接的 URL
+    function saveCachedUrl(url) {
+      try { localStorage.setItem(CACHE_KEY, url); } catch(e) {}
+    }
     let currentNum = 0;
     let targetNum = 0;
     
@@ -209,6 +230,7 @@
       if (isDefaultAlive) {
         targetNum = 100;
         statusText.innerText = "Connected";
+        saveCachedUrl(DEFAULT_SERVER);
         setTimeout(() => connectToBackend(DEFAULT_SERVER), 800);
       } else {
         targetNum = 0;
@@ -220,6 +242,7 @@
       loader.style.opacity = '0';
       setTimeout(() => {
         loader.style.display = 'none';
+        loadCachedUrl();
         modalOverlay.classList.add('visible');
       }, 300);
     }
@@ -236,6 +259,7 @@
 
       if (isAlive) {
         btnConnect.innerText = "Success";
+        saveCachedUrl(url);
         connectToBackend(url);
       } else {
         btnConnect.disabled = false;

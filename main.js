@@ -333,10 +333,23 @@ app.whenReady().then(async () => {
       setTimeout(resolve, 30000); // 最多等30秒
     });
     
+    // ★ 提前注册基础 IPC handlers，确保骨架屏阶段就可用
+    ipcMain.handle('get-app-path', () => app.getAppPath());
+    ipcMain.handle('get-server-info', () => ({ port: PORT, defaultPort: DEFAULT_PORT, isDefaultPort: PORT === DEFAULT_PORT }));
+    ipcMain.handle('get-vmc-config', () => { global.vmcCfg.receive.syncExpression ??= false; return global.vmcCfg; });
+    ipcMain.handle('get-backend-logs', () => logBuffer.join('\n'));
+    ipcMain.handle('get-internal-cdp-info', () => ({ active: IS_INTERNAL_MODE_ACTIVE, port: SESSION_CDP_PORT }));
+    ipcMain.handle('set-env', async (event, arg) => saveEnvVariable(arg.key, arg.value));
+    ipcMain.handle('restart-app', () => { app.relaunch(); app.exit(); });
+    ipcMain.handle('window-action', (_, action) => {
+      switch (action) { case 'show': mainWindow.show(); break; case 'hide': mainWindow.hide(); break; case 'minimize': mainWindow.minimize(); break; case 'maximize': mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize(); break; case 'close': mainWindow.close(); break; }
+    });
+
     await startBackend();
 
-    // 3. 智能等待后端连通
-    const targetUrl = globalConfig?.backendUrl || `http://127.0.0.1:${PORT}`;
+    // 3. 智能等待后端连通（只检测本地默认端口，不使用缓存的远程地址）
+    // 缓存的 backendUrl 由骨架屏前端的 localStorage 管理，让用户自主选择是否连接
+    const targetUrl = `http://127.0.0.1:${PORT}`;
     let isBackendReady = false;
     
     const smartWaitForBackend = async () => {
@@ -374,8 +387,6 @@ app.whenReady().then(async () => {
     });
 
     // --- 以下是原有的各种 IPC 注册 ---
-    ipcMain.handle('get-vmc-config', () => { global.vmcCfg.receive.syncExpression ??= false; return global.vmcCfg; });
-    ipcMain.handle('get-backend-logs', () => logBuffer.join('\n'));
     if (IS_INTERNAL_MODE_ACTIVE) {
         try {
             const portFile = path.join(app.getPath('userData'), 'DevToolsActivePort');
@@ -383,12 +394,7 @@ app.whenReady().then(async () => {
         } catch (e) {}
     }
 
-    ipcMain.handle('get-app-path', () => app.getAppPath());
-    ipcMain.handle('get-internal-cdp-info', () => ({ active: IS_INTERNAL_MODE_ACTIVE, port: SESSION_CDP_PORT }));
     ipcMain.handle('save-chrome-config', async (event, settings) => { saveEnvVariable('chromeMCPSettings', settings); return true; });
-    ipcMain.handle('get-server-info', () => ({ port: PORT, defaultPort: DEFAULT_PORT, isDefaultPort: PORT === DEFAULT_PORT }));
-    ipcMain.handle('set-env', async (event, arg) => saveEnvVariable(arg.key, arg.value));
-    ipcMain.handle('restart-app', () => { app.relaunch(); app.exit(); });
 
     ipcMain.handle('save-screenshot-direct', async (event, { buffer }) => {
       const uploadDir = path.join(app.getPath('userData'),'Super-Agent-Party', 'uploaded_files');
@@ -523,10 +529,6 @@ app.whenReady().then(async () => {
       if (frameData.blends.length > 0) packets.push({ address: '/VMC/Ext/Blend/Apply', args: [] });
       packets.push({ address: '/VMC/Ext/OK', args: [{ type: 'i', value: 1 }] });
       try { vmcSendSocket.send(osc.writePacket({ timeTag: osc.timeTag(0), packets: packets }), port, host); } catch (e) {}
-    });
-
-    ipcMain.handle('window-action', (_, action) => {
-      switch (action) { case 'show': mainWindow.show(); break; case 'hide': mainWindow.hide(); break; case 'minimize': mainWindow.minimize(); break; case 'maximize': mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize(); break; case 'close': mainWindow.close(); break; }
     });
 
     ipcMain.handle('toggle-window-size', async (event, { width, height }) => {
